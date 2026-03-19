@@ -649,8 +649,8 @@ def register_handlers(dp: Dispatcher) -> None:
 async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     token = os.getenv("BOT_TOKEN", "").strip()
-    if not token:
-        raise RuntimeError("87946149:AEFcSY3kMDmuZwU1SwbGJQA")
+   if not token:
+    raise RuntimeError("BOT_TOKEN not set")
 
     tz = get_app_timezone()
 
