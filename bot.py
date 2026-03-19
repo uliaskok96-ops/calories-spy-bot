@@ -36,6 +36,10 @@ user_data = defaultdict(list)
 # user_custom_foods[user_id]["сирок"] = {"kcal": ..., "p": ..., "f": ..., "c": ...}
 user_custom_foods = defaultdict(dict)
 
+# Налаштування користувача:
+# user_settings[user_id] = {"goal_kcal": 1600, "goal_protein": 90}
+user_settings = defaultdict(lambda: {"goal_kcal": None, "goal_protein": None})
+
 # КБЖУ на 100 г
 FOOD_DB = {
     # Крупи / гарніри
@@ -90,8 +94,7 @@ FOOD_DB = {
 ALIASES = {
     "кабанос": "кабаноси",
     "kabanosy": "кабаноси",
-    "крабові палички": "крабові палички",
-    "крабові": "крабові",
+    "крабові": "крабові палички",
     "яєць": "яйця",
     "банани": "банан",
     "яблука": "яблуко",
@@ -179,9 +182,17 @@ def daily_totals(user_id: int) -> dict:
 
 def summary_text(user_id: int) -> str:
     items = user_data[user_id]
+    settings = user_settings[user_id]
 
     if not items:
-        return "📊 За сьогодні ще нічого не додано."
+        lines = ["📊 За сьогодні ще нічого не додано."]
+
+        if settings["goal_kcal"]:
+            lines.append(f"🎯 Ціль по калоріях: {settings['goal_kcal']:.0f}")
+        if settings["goal_protein"]:
+            lines.append(f"🥩 Ціль по білку: {settings['goal_protein']:.0f} г")
+
+        return "\n".join(lines)
 
     lines = ["📋 <b>Що зʼїдено сьогодні:</b>\n"]
 
@@ -196,6 +207,24 @@ def summary_text(user_id: int) -> str:
         f"Б {total['p']:.1f} / Ж {total['f']:.1f} / В {total['c']:.1f}"
     )
 
+    if settings["goal_kcal"]:
+        remaining = settings["goal_kcal"] - total["kcal"]
+        if remaining >= 0:
+            lines.append(f"🎯 Ціль: {settings['goal_kcal']:.0f} ккал")
+            lines.append(f"📉 Залишилось: {remaining:.0f} ккал")
+        else:
+            lines.append(f"🎯 Ціль: {settings['goal_kcal']:.0f} ккал")
+            lines.append(f"⚠️ Перебір: {abs(remaining):.0f} ккал")
+
+    if settings["goal_protein"]:
+        protein_left = settings["goal_protein"] - total["p"]
+        if protein_left >= 0:
+            lines.append(f"🥩 Ціль по білку: {settings['goal_protein']:.0f} г")
+            lines.append(f"🟡 Ще добрати білка: {protein_left:.1f} г")
+        else:
+            lines.append(f"🥩 Ціль по білку: {settings['goal_protein']:.0f} г")
+            lines.append(f"✅ Білок добрано")
+
     return "\n".join(lines)
 
 
@@ -205,7 +234,7 @@ def parse_input(text: str):
     if len(parts) < 2:
         raise ValueError("bad format")
 
-    # ВАРІАНТ 1: "гречка 150"
+    # Варіант 1: "гречка 150"
     try:
         weight = float(parts[-1].replace(",", "."))
         food_name = " ".join(parts[:-1])
@@ -214,7 +243,7 @@ def parse_input(text: str):
     except ValueError:
         pass
 
-    # ВАРІАНТ 2: "2 яйця"
+    # Варіант 2: "2 яйця"
     try:
         count = float(parts[0].replace(",", "."))
         food_name = " ".join(parts[1:])
@@ -235,18 +264,78 @@ def parse_input(text: str):
 
 async def start_handler(message: Message) -> None:
     await message.answer(
-        "Йоу 👋\n\n"
-        "Можна так:\n"
+        "Привіт 👋\n\n"
+        "Я допомагаю рахувати калорії, білки, жири і вуглеводи.\n\n"
+        "<b>Як можна вводити їжу:</b>\n"
         "<code>гречка 150</code>\n"
-        "<code>2 яйця</code>\n\n"
-        "Якщо я не знаю продукт — ти можеш додати його сама:\n"
-        "<code>/addfood сирок 350 8 27 25</code>\n\n"
-        "Команди:\n"
-        "<code>/addfood</code> — як додати продукт\n"
+        "<code>2 яйця</code>\n"
+        "<code>1 банан</code>\n\n"
+        "<b>Корисні команди:</b>\n"
+        "<code>/help</code> — підказка\n"
+        "<code>/addfood</code> — як додати свій продукт\n"
         "<code>/myfoods</code> — мої продукти\n"
-        "<code>/clearfoods</code> — очистити мої продукти",
+        "<code>/clearfoods</code> — очистити мої продукти\n"
+        "<code>/setgoal 1600</code> — ціль калорій\n"
+        "<code>/setprotein 90</code> — ціль білка\n\n"
+        "Кнопки нижче теж працюють 👇",
         reply_markup=get_keyboard(),
     )
+
+
+async def help_handler(message: Message) -> None:
+    await message.answer(
+        "<b>Як користуватись ботом:</b>\n\n"
+        "1. Додавай їжу по грамах:\n"
+        "<code>курка 200</code>\n"
+        "<code>гречка 150</code>\n\n"
+        "2. Або по штуках:\n"
+        "<code>2 яйця</code>\n"
+        "<code>1 банан</code>\n\n"
+        "3. Якщо я не знаю продукт — додай його:\n"
+        "<code>/addfood сирок 350 8 27 25</code>\n\n"
+        "4. Постав ціль:\n"
+        "<code>/setgoal 1600</code>\n"
+        "<code>/setprotein 90</code>\n\n"
+        "5. Дивись підсумок кнопкою <b>📊 Підсумок</b>"
+    )
+
+
+async def setgoal_handler(message: Message) -> None:
+    parts = (message.text or "").split()
+
+    if len(parts) != 2:
+        await message.answer("❌ Формат: <code>/setgoal 1600</code>")
+        return
+
+    try:
+        goal = float(parts[1].replace(",", "."))
+        if goal <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ Введи нормальне число. Наприклад: <code>/setgoal 1600</code>")
+        return
+
+    user_settings[message.from_user.id]["goal_kcal"] = goal
+    await message.answer(f"🎯 Ціль по калоріях збережена: <b>{goal:.0f} ккал</b>")
+
+
+async def setprotein_handler(message: Message) -> None:
+    parts = (message.text or "").split()
+
+    if len(parts) != 2:
+        await message.answer("❌ Формат: <code>/setprotein 90</code>")
+        return
+
+    try:
+        goal = float(parts[1].replace(",", "."))
+        if goal <= 0:
+            raise ValueError
+    except ValueError:
+        await message.answer("❌ Введи нормальне число. Наприклад: <code>/setprotein 90</code>")
+        return
+
+    user_settings[message.from_user.id]["goal_protein"] = goal
+    await message.answer(f"🥩 Ціль по білку збережена: <b>{goal:.0f} г</b>")
 
 
 async def addfood_handler(message: Message) -> None:
@@ -287,7 +376,7 @@ async def addfood_handler(message: Message) -> None:
         food_name = " ".join(parts[1:-4]).strip().lower()
 
         if not food_name:
-            raise ValueError("empty name")
+            raise ValueError
 
         food_name = normalize_food_name(food_name)
 
@@ -345,6 +434,35 @@ async def text_handler(message: Message) -> None:
     if not text:
         return
 
+    parts = text.split()
+
+    # Якщо написано одне слово типу "вп"
+    if len(parts) == 1:
+        food_name = normalize_food_name(parts[0])
+        food_data = get_food_data(message.from_user.id, food_name)
+
+        if not food_data:
+            await message.answer(
+                f"❌ Я не знаю цю їжу: <b>{food_name}</b>\n\n"
+                f"👉 Додай її так:\n"
+                f"<code>/addfood {food_name} 100 10 5 20</code>\n\n"
+                f"Або введи нормально:\n"
+                f"<code>гречка 150</code>\n"
+                f"<code>2 яйця</code>",
+                reply_markup=get_keyboard(),
+            )
+            return
+
+        await message.answer(
+            f"⚠️ Я знаю продукт <b>{food_name}</b>, але ти не вказала вагу або кількість.\n\n"
+            f"Напиши так:\n"
+            f"<code>{food_name} 150</code>\n"
+            f"або, якщо це штуки:\n"
+            f"<code>2 {food_name}</code>",
+            reply_markup=get_keyboard(),
+        )
+        return
+
     try:
         food_name, weight = parse_input(text)
 
@@ -375,10 +493,7 @@ async def text_handler(message: Message) -> None:
             f"100 — ккал\n"
             f"10 — білки\n"
             f"5 — жири\n"
-            f"20 — вуглеводи\n\n"
-            f"Або введи нормально:\n"
-            f"<code>гречка 150</code>\n"
-            f"<code>2 яйця</code>",
+            f"20 — вуглеводи",
             reply_markup=get_keyboard(),
         )
         return
@@ -387,15 +502,25 @@ async def text_handler(message: Message) -> None:
     user_data[message.from_user.id].append(entry)
 
     total = daily_totals(message.from_user.id)
+    settings = user_settings[message.from_user.id]
 
-    await message.answer(
-        f"✅ Додано:\n"
-        f"🍽 {entry['food']} {entry['weight']:.0f}г\n"
-        f"🔥 {entry['kcal']:.0f} ккал\n"
-        f"Б {entry['p']:.1f} / Ж {entry['f']:.1f} / В {entry['c']:.1f}\n\n"
+    text_lines = [
+        "✅ Додано:",
+        f"🍽 {entry['food']} {entry['weight']:.0f}г",
+        f"🔥 {entry['kcal']:.0f} ккал",
+        f"Б {entry['p']:.1f} / Ж {entry['f']:.1f} / В {entry['c']:.1f}",
+        "",
         f"📊 Зараз за день: {total['kcal']:.0f} ккал",
-        reply_markup=get_keyboard(),
-    )
+    ]
+
+    if settings["goal_kcal"]:
+        remaining = settings["goal_kcal"] - total["kcal"]
+        if remaining >= 0:
+            text_lines.append(f"🎯 До цілі лишилось: {remaining:.0f} ккал")
+        else:
+            text_lines.append(f"⚠️ Перебір: {abs(remaining):.0f} ккал")
+
+    await message.answer("\n".join(text_lines), reply_markup=get_keyboard())
 
 
 async def callback_handler(callback: CallbackQuery) -> None:
@@ -417,12 +542,22 @@ async def callback_handler(callback: CallbackQuery) -> None:
             deleted = user_data[user_id].pop()
             total = daily_totals(user_id)
 
-            await callback.message.answer(
-                f"↩️ Видалено останнє:\n"
-                f"{deleted['food']} {deleted['weight']:.0f}г — {deleted['kcal']:.0f} ккал\n\n"
+            text_lines = [
+                "↩️ Видалено останнє:",
+                f"{deleted['food']} {deleted['weight']:.0f}г — {deleted['kcal']:.0f} ккал",
+                "",
                 f"📊 Тепер за день: {total['kcal']:.0f} ккал",
-                reply_markup=get_keyboard(),
-            )
+            ]
+
+            settings = user_settings[user_id]
+            if settings["goal_kcal"]:
+                remaining = settings["goal_kcal"] - total["kcal"]
+                if remaining >= 0:
+                    text_lines.append(f"🎯 До цілі лишилось: {remaining:.0f} ккал")
+                else:
+                    text_lines.append(f"⚠️ Перебір: {abs(remaining):.0f} ккал")
+
+            await callback.message.answer("\n".join(text_lines), reply_markup=get_keyboard())
 
     elif callback.data == "reset":
         user_data[user_id] = []
@@ -458,9 +593,13 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.message.register(start_handler, Command("start"))
+    dp.message.register(help_handler, Command("help"))
     dp.message.register(addfood_handler, Command("addfood"))
     dp.message.register(myfoods_handler, Command("myfoods"))
     dp.message.register(clearfoods_handler, Command("clearfoods"))
+    dp.message.register(setgoal_handler, Command("setgoal"))
+    dp.message.register(setprotein_handler, Command("setprotein"))
+
     dp.callback_query.register(callback_handler)
     dp.message.register(text_handler, F.text)
 
