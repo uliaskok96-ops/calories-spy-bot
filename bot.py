@@ -650,7 +650,7 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token:
-        raise RuntimeError("8798461449:AAErcSbY3Wk5ModnMuzW-UO1Sw8bl6JGQWA")
+        raise RuntimeError("87946149:AEFcSY3kMDmuZwU1SwbGJQA")
 
     tz = get_app_timezone()
 
