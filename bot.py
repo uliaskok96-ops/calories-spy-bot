@@ -650,7 +650,7 @@ async def main() -> None:
     logging.basicConfig(level=logging.INFO)
     token = os.getenv("BOT_TOKEN", "").strip()
     if not token:
-        raise RuntimeError("BOT_TOKEN is not set. Export BOT_TOKEN and run again.")
+        raise RuntimeError("8798461449:AAErcSbY3Wk5ModnMuzW-UO1Sw8bl6JGQWA")
 
     tz = get_app_timezone()
 
