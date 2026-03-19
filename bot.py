@@ -29,46 +29,80 @@ if not BOT_TOKEN:
 # Дані в пам'яті
 # -----------------------------
 
-# Для кожного користувача зберігаємо список страв за день
-# Кожен запис:
-# {
-#   "food": "гречка",
-#   "weight": 150,
-#   "kcal": 165,
-#   "p": 6.0,
-#   "f": 1.5,
-#   "c": 31.5
-# }
 user_data = defaultdict(list)
 
-# База продуктів на 100 г
+# КБЖУ на 100 г
 FOOD_DB = {
-    "гречка": {"kcal": 110, "p": 4.0, "f": 1.0, "c": 21.0},
-    "греча": {"kcal": 110, "p": 4.0, "f": 1.0, "c": 21.0},
-    "рис": {"kcal": 130, "p": 2.7, "f": 0.3, "c": 28.0},
-    "вівсянка": {"kcal": 68, "p": 2.4, "f": 1.4, "c": 12.0},
+    # Крупи / гарніри
+    "гречка": {"kcal": 92, "p": 3.4, "f": 0.6, "c": 19.9},
+    "греча": {"kcal": 92, "p": 3.4, "f": 0.6, "c": 19.9},
+    "рис": {"kcal": 130, "p": 2.7, "f": 0.3, "c": 28.2},
     "макарони": {"kcal": 131, "p": 5.0, "f": 1.1, "c": 25.0},
-    "картопля": {"kcal": 77, "p": 2.0, "f": 0.1, "c": 17.0},
-    "пюре": {"kcal": 90, "p": 2.0, "f": 3.0, "c": 15.0},
+    "вівсянка": {"kcal": 68, "p": 2.4, "f": 1.4, "c": 12.0},
+    "картопля": {"kcal": 77, "p": 2.0, "f": 0.1, "c": 17.5},
+    "пюре": {"kcal": 88, "p": 1.7, "f": 3.4, "c": 13.8},
+
+    # М'ясо / білок
     "курка": {"kcal": 165, "p": 31.0, "f": 3.6, "c": 0.0},
     "грудка": {"kcal": 165, "p": 31.0, "f": 3.6, "c": 0.0},
-    "крильця": {"kcal": 230, "p": 23.0, "f": 16.0, "c": 0.0},
-    "яйце": {"kcal": 155, "p": 13.0, "f": 11.0, "c": 1.1},
-    "яйця": {"kcal": 155, "p": 13.0, "f": 11.0, "c": 1.1},
-    "огірок": {"kcal": 15, "p": 0.8, "f": 0.1, "c": 2.8},
-    "огірки": {"kcal": 15, "p": 0.8, "f": 0.1, "c": 2.8},
-    "кукурудза": {"kcal": 96, "p": 3.4, "f": 1.5, "c": 17.0},
+    "куряча грудка": {"kcal": 165, "p": 31.0, "f": 3.6, "c": 0.0},
+    "крильця": {"kcal": 203, "p": 30.5, "f": 8.1, "c": 0.0},
+
+    # Яйця
+    "яйце": {"kcal": 143, "p": 12.6, "f": 9.5, "c": 0.7},
+    "яйця": {"kcal": 143, "p": 12.6, "f": 9.5, "c": 0.7},
+
+    # Овочі
+    "огірок": {"kcal": 15, "p": 0.7, "f": 0.1, "c": 3.6},
+    "огірки": {"kcal": 15, "p": 0.7, "f": 0.1, "c": 3.6},
+
+    # Фрукти
+    "банан": {"kcal": 89, "p": 1.1, "f": 0.3, "c": 22.8},
+    "банани": {"kcal": 89, "p": 1.1, "f": 0.3, "c": 22.8},
+    "яблуко": {"kcal": 52, "p": 0.3, "f": 0.2, "c": 13.8},
+    "яблука": {"kcal": 52, "p": 0.3, "f": 0.2, "c": 13.8},
+
+    # Хліб / базове
+    "хліб": {"kcal": 265, "p": 9.0, "f": 3.2, "c": 49.0},
+
+    # Готові / приблизні
+    "кукурудза": {"kcal": 86, "p": 3.3, "f": 1.4, "c": 18.7},
     "крабові": {"kcal": 95, "p": 7.0, "f": 1.0, "c": 15.0},
     "крабпалички": {"kcal": 95, "p": 7.0, "f": 1.0, "c": 15.0},
+    "крабові палички": {"kcal": 95, "p": 7.0, "f": 1.0, "c": 15.0},
+
+    # Делікатеси / ковбаси — приблизно
     "хамон": {"kcal": 241, "p": 31.0, "f": 13.0, "c": 0.0},
     "прошуто": {"kcal": 250, "p": 26.0, "f": 17.0, "c": 0.0},
-    "сир": {"kcal": 350, "p": 24.0, "f": 27.0, "c": 0.0},
-    "хліб": {"kcal": 265, "p": 8.0, "f": 3.2, "c": 49.0},
-    "банан": {"kcal": 89, "p": 1.1, "f": 0.3, "c": 23.0},
-    "яблуко": {"kcal": 52, "p": 0.3, "f": 0.2, "c": 14.0},
-    "мівіна": {"kcal": 250, "p": 6.0, "f": 10.0, "c": 30.0},
-    "роліні": {"kcal": 198, "p": 6.0, "f": 8.0, "c": 26.0},
     "кабаноси": {"kcal": 400, "p": 25.0, "f": 35.0, "c": 2.0},
+    "кабанос": {"kcal": 400, "p": 25.0, "f": 35.0, "c": 2.0},
+
+    # Локшина швидкого приготування — приблизно
+    "мівіна": {"kcal": 450, "p": 9.0, "f": 17.0, "c": 63.0},
+}
+
+# Синоніми назв
+ALIASES = {
+    "кабанос": "кабаноси",
+    "kabanosy": "кабаноси",
+    "крабові палички": "крабові палички",
+    "крабові": "крабові",
+    "яєць": "яйця",
+    "банани": "банан",
+    "яблука": "яблуко",
+    "огірки": "огірок",
+}
+
+# Середня вага 1 штуки у грамах
+UNIT_WEIGHTS = {
+    "яйце": 50,
+    "яйця": 50,
+    "банан": 120,
+    "банани": 120,
+    "яблуко": 180,
+    "яблука": 180,
+    "огірок": 120,
+    "огірки": 120,
 }
 
 
@@ -89,6 +123,12 @@ def get_keyboard() -> InlineKeyboardMarkup:
 # -----------------------------
 # Допоміжні функції
 # -----------------------------
+
+def normalize_food_name(food_name: str) -> str:
+    food_name = food_name.strip().lower()
+    food_name = " ".join(food_name.split())
+    return ALIASES.get(food_name, food_name)
+
 
 def calculate_macros(food_name: str, weight: float) -> dict:
     data = FOOD_DB[food_name]
@@ -149,6 +189,36 @@ def summary_text(user_id: int) -> str:
     return "\n".join(lines)
 
 
+def parse_input(text: str):
+    parts = text.strip().lower().split()
+
+    if len(parts) < 2:
+        raise ValueError("bad format")
+
+    # ВАРІАНТ 1: "гречка 150"
+    try:
+        weight = float(parts[-1].replace(",", "."))
+        food_name = " ".join(parts[:-1])
+        food_name = normalize_food_name(food_name)
+        return food_name, weight
+    except ValueError:
+        pass
+
+    # ВАРІАНТ 2: "2 яйця"
+    try:
+        count = float(parts[0].replace(",", "."))
+        food_name = " ".join(parts[1:])
+        food_name = normalize_food_name(food_name)
+
+        if food_name not in UNIT_WEIGHTS:
+            raise ValueError("no unit weight")
+
+        weight = count * UNIT_WEIGHTS[food_name]
+        return food_name, weight
+    except ValueError:
+        raise ValueError("bad format")
+
+
 # -----------------------------
 # Хендлери
 # -----------------------------
@@ -157,9 +227,10 @@ async def start_handler(message: Message) -> None:
     await message.answer(
         "Йоу 👋\n\n"
         "Пиши так:\n"
-        "<b>гречка 150</b>\n\n"
-        "Я порахую калорії, білки, жири і вуглеводи.\n\n"
-        "Доступні кнопки нижче 👇",
+        "<b>гречка 150</b>\n"
+        "або\n"
+        "<b>2 яйця</b>\n\n"
+        "Я порахую калорії, білки, жири і вуглеводи.",
         reply_markup=get_keyboard(),
     )
 
@@ -171,30 +242,25 @@ async def text_handler(message: Message) -> None:
         return
 
     try:
-        parts = text.split()
-        if len(parts) < 2:
-            raise ValueError("not enough parts")
-
-        weight_str = parts[-1].replace(",", ".")
-        food_name = " ".join(parts[:-1])
-        weight = float(weight_str)
+        food_name, weight = parse_input(text)
 
         if weight <= 0:
-            await message.answer("❌ Вага має бути більшою за 0.")
+            await message.answer("❌ Кількість або вага має бути більшою за 0.", reply_markup=get_keyboard())
             return
 
     except Exception:
         await message.answer(
-            "❌ Напиши у форматі: <b>гречка 150</b>",
+            "❌ Напиши у форматі:\n"
+            "<b>гречка 150</b>\n"
+            "або\n"
+            "<b>2 яйця</b>",
             reply_markup=get_keyboard(),
         )
         return
 
     if food_name not in FOOD_DB:
-        available = ", ".join(sorted(list(FOOD_DB.keys())[:20]))
         await message.answer(
-            "❌ Я поки не знаю цю їжу.\n\n"
-            f"Спробуй щось із бази, наприклад: {available}",
+            "❌ Я поки не знаю цю їжу.",
             reply_markup=get_keyboard(),
         )
         return
