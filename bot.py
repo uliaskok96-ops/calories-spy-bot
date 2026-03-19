@@ -29,7 +29,12 @@ if not BOT_TOKEN:
 # Дані в пам'яті
 # -----------------------------
 
+# Що зʼїдено за день
 user_data = defaultdict(list)
+
+# Користувацькі продукти:
+# user_custom_foods[user_id]["сирок"] = {"kcal": ..., "p": ..., "f": ..., "c": ...}
+user_custom_foods = defaultdict(dict)
 
 # КБЖУ на 100 г
 FOOD_DB = {
@@ -130,14 +135,22 @@ def normalize_food_name(food_name: str) -> str:
     return ALIASES.get(food_name, food_name)
 
 
-def calculate_macros(food_name: str, weight: float) -> dict:
-    data = FOOD_DB[food_name]
+def get_food_data(user_id: int, food_name: str):
+    # Спочатку дивимось у персональні продукти користувача
+    if food_name in user_custom_foods[user_id]:
+        return user_custom_foods[user_id][food_name]
+
+    # Потім у загальну базу
+    return FOOD_DB.get(food_name)
+
+
+def calculate_macros(food_name: str, weight: float, food_data: dict) -> dict:
     factor = weight / 100.0
 
-    kcal = data["kcal"] * factor
-    p = data["p"] * factor
-    f = data["f"] * factor
-    c = data["c"] * factor
+    kcal = food_data["kcal"] * factor
+    p = food_data["p"] * factor
+    f = food_data["f"] * factor
+    c = food_data["c"] * factor
 
     return {
         "food": food_name,
@@ -226,13 +239,90 @@ def parse_input(text: str):
 async def start_handler(message: Message) -> None:
     await message.answer(
         "Йоу 👋\n\n"
-        "Пиши так:\n"
+        "Можна так:\n"
         "<b>гречка 150</b>\n"
-        "або\n"
         "<b>2 яйця</b>\n\n"
-        "Я порахую калорії, білки, жири і вуглеводи.",
+        "Щоб додати свій продукт без коду:\n"
+        "<code>/addfood сирок 350 8 27 25</code>\n\n"
+        "Формат /addfood:\n"
+        "<code>/addfood назва ккал білки жири вуглеводи</code>\n"
+        "Усе — на 100 г.",
         reply_markup=get_keyboard(),
     )
+
+
+async def addfood_handler(message: Message) -> None:
+    text = (message.text or "").strip()
+
+    parts = text.split()
+    if len(parts) < 6:
+        await message.answer(
+            "❌ Формат такий:\n"
+            "<code>/addfood сирок 350 8 27 25</code>\n\n"
+            "де:\n"
+            "- сирок — назва\n"
+            "- 350 — ккал на 100 г\n"
+            "- 8 — білки\n"
+            "- 27 — жири\n"
+            "- 25 — вуглеводи"
+        )
+        return
+
+    try:
+        # /addfood назва ккал p f c
+        kcal = float(parts[-4].replace(",", "."))
+        p = float(parts[-3].replace(",", "."))
+        f = float(parts[-2].replace(",", "."))
+        c = float(parts[-1].replace(",", "."))
+        food_name = " ".join(parts[1:-4]).strip().lower()
+
+        if not food_name:
+            raise ValueError("empty name")
+
+        food_name = normalize_food_name(food_name)
+
+        user_custom_foods[message.from_user.id][food_name] = {
+            "kcal": kcal,
+            "p": p,
+            "f": f,
+            "c": c,
+        }
+
+        await message.answer(
+            f"✅ Додала твій продукт у пам'ять:\n"
+            f"<b>{food_name}</b>\n"
+            f"{kcal:.0f} ккал / Б {p:.1f} / Ж {f:.1f} / В {c:.1f}\n\n"
+            f"Тепер можеш писати:\n"
+            f"<code>{food_name} 100</code>"
+        )
+    except Exception:
+        await message.answer(
+            "❌ Не змогла розібрати команду.\n"
+            "Правильно так:\n"
+            "<code>/addfood сирок 350 8 27 25</code>"
+        )
+
+
+async def myfoods_handler(message: Message) -> None:
+    foods = user_custom_foods[message.from_user.id]
+
+    if not foods:
+        await message.answer("📦 У тебе ще немає своїх доданих продуктів.")
+        return
+
+    lines = ["📦 <b>Твої продукти в пам'яті:</b>\n"]
+    for name, data in foods.items():
+        lines.append(
+            f"- <b>{name}</b>: {data['kcal']:.0f} ккал / "
+            f"Б {data['p']:.1f} / Ж {data['f']:.1f} / В {data['c']:.1f}"
+        )
+
+    await message.answer("\n".join(lines))
+
+
+async def clearfoods_handler(message: Message) -> None:
+    user_custom_foods[message.from_user.id] = {}
+    await message.answer("🗑 Усі твої додані продукти очищено.")
 
 
 async def text_handler(message: Message) -> None:
@@ -258,14 +348,20 @@ async def text_handler(message: Message) -> None:
         )
         return
 
-    if food_name not in FOOD_DB:
+    food_data = get_food_data(message.from_user.id, food_name)
+
+    if not food_data:
         await message.answer(
-            "❌ Я поки не знаю цю їжу.",
+            "❌ Я поки не знаю цю їжу.\n\n"
+            "Можеш додати її сама командою:\n"
+            "<code>/addfood назва ккал білки жири вуглеводи</code>\n\n"
+            "Приклад:\n"
+            "<code>/addfood сирок 350 8 27 25</code>",
             reply_markup=get_keyboard(),
         )
         return
 
-    entry = calculate_macros(food_name, weight)
+    entry = calculate_macros(food_name, weight, food_data)
     user_data[message.from_user.id].append(entry)
 
     total = daily_totals(message.from_user.id)
@@ -340,6 +436,9 @@ async def main() -> None:
     dp = Dispatcher()
 
     dp.message.register(start_handler, Command("start"))
+    dp.message.register(addfood_handler, Command("addfood"))
+    dp.message.register(myfoods_handler, Command("myfoods"))
+    dp.message.register(clearfoods_handler, Command("clearfoods"))
     dp.callback_query.register(callback_handler)
     dp.message.register(text_handler, F.text)
 
